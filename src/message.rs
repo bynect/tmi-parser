@@ -3,7 +3,7 @@ use std::io::{Error, ErrorKind, Result};
 
 pub type Tags<'a> = HashMap<&'a str, TagValue<'a>>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TagValue<'a> {
     Number(u32),
     Timestamp(u64),
@@ -13,7 +13,7 @@ pub enum TagValue<'a> {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Message<'a> {
     CapReq {
         req: &'a str,
