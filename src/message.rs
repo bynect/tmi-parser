@@ -1,50 +1,7 @@
-//! Parser for IRC-based TMI messages.
+//! IRC-based TMI messages.
 
-use std::collections::HashMap;
+use crate::{TagValue, Tags};
 use std::io::{Error, ErrorKind, Result};
-
-/// A type alias for a HashMap whose keys are [`&str`] and values [`TagValue`].
-/// Uses slice [`&str`] instead of owned [`String`] in order to avoid data duplication.
-pub type Tags<'a> = HashMap<&'a str, TagValue<'a>>;
-
-/// Possible values of message tags.
-#[derive(Debug, PartialEq)]
-pub enum TagValue<'a> {
-    /// Represents a parsed sequence of numbers of type u32.
-    Number(u32),
-    /// Represents a parsed sequence of numbers of type u64.
-    Timestamp(u64),
-    /// Boolean values represents literal "1" (true) or "0" (false).
-    ///
-    /// Note that a single digit number "1" or "0" may be represented
-    /// as a Boolean value instead of a Number value.
-    /// Type conversion should therefore be done by the user code.
-    Boolean(bool),
-    /// Strings represent an unparsed string literal.
-    String(&'a str),
-    /// None represents literal empty string "".
-    None,
-}
-
-impl<'a> TagValue<'a> {
-    /// Returns a TagValue variant based on the given [`&str`].
-    pub fn new(val: &'a str) -> TagValue<'a> {
-        match val {
-            "" => TagValue::None,
-            "0" => TagValue::Boolean(false),
-            "1" => TagValue::Boolean(true),
-            _ => {
-                if let Ok(num) = val.parse::<u32>() {
-                    TagValue::Number(num)
-                } else if let Ok(tm) = val.parse::<u64>() {
-                    TagValue::Timestamp(tm)
-                } else {
-                    TagValue::String(val)
-                }
-            }
-        }
-    }
-}
 
 /// Possible types of TMI messages.
 /// Unrecognized messages are handled by the associated [`parse`] function.
@@ -160,9 +117,7 @@ impl<'a> Message<'a> {
         }
 
         let buf = msg.trim();
-        let (tags, off) = if buf.starts_with('@') {
-            let buf = &buf[1..];
-
+        let (tags, off) = if let Some(buf) = buf.strip_prefix('@') {
             Self::parse_tags(buf)?
         } else {
             (None, 0)
@@ -215,7 +170,7 @@ impl<'a> Message<'a> {
             "CAP" => {
                 let off = body
                     .find(" :")
-                    .ok_or(Error::new(ErrorKind::Other, "Malformed CAP command."))?;
+                    .ok_or_else(|| Error::new(ErrorKind::Other, "Malformed CAP command."))?;
 
                 match &body[..off] {
                     "REQ" => Message::CapReq {
@@ -234,7 +189,7 @@ impl<'a> Message<'a> {
             "PRIVMSG" => {
                 let off = body
                     .find(" :")
-                    .ok_or(Error::new(ErrorKind::Other, "Malformed PRIVMSG command."))?;
+                    .ok_or_else(|| Error::new(ErrorKind::Other, "Malformed PRIVMSG command."))?;
 
                 Message::Privmsg {
                     tags,
@@ -260,7 +215,7 @@ impl<'a> Message<'a> {
             "CLEARMSG" => {
                 let off = body
                     .find(" :")
-                    .ok_or(Error::new(ErrorKind::Other, "Malformed CLEARMSG command."))?;
+                    .ok_or_else(|| Error::new(ErrorKind::Other, "Malformed CLEARMSG command."))?;
 
                 Message::Clearmsg {
                     tags,
@@ -289,10 +244,9 @@ impl<'a> Message<'a> {
                         }
                     }
                 } else {
-                    let off = body.find(" :").ok_or(Error::new(
-                        ErrorKind::Other,
-                        "Malformed HOSTTARGET command.",
-                    ))?;
+                    let off = body.find(" :").ok_or_else(|| {
+                        Error::new(ErrorKind::Other, "Malformed HOSTTARGET command.")
+                    })?;
 
                     if body.len() < off + 3 {
                         return Err(Error::new(
@@ -337,7 +291,7 @@ impl<'a> Message<'a> {
             "NOTICE" => {
                 let off = body
                     .find(" :")
-                    .ok_or(Error::new(ErrorKind::Other, "Malformed NOTICE command."))?;
+                    .ok_or_else(|| Error::new(ErrorKind::Other, "Malformed NOTICE command."))?;
 
                 Message::Notice {
                     tags,
@@ -351,10 +305,9 @@ impl<'a> Message<'a> {
                 chan: &body[1..],
             },
             "USERNOTICE" => {
-                let off = body.find(" :").ok_or(Error::new(
-                    ErrorKind::Other,
-                    "Malformed USERNOTICE command.",
-                ))?;
+                let off = body
+                    .find(" :")
+                    .ok_or_else(|| Error::new(ErrorKind::Other, "Malformed USERNOTICE command."))?;
 
                 Message::Usernotice {
                     tags,
