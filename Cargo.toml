@@ -1,0 +1,7 @@
+[package]
+name = "tmi-parser"
+version = "0.1.0"
+authors = ["bynect <68197565+bynect@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
