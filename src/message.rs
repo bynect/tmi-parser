@@ -1,87 +1,153 @@
+//! Parser for IRC-based TMI messages.
+
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 
+/// A type alias for a HashMap whose keys are [`&str`] and values [`TagValue`].
+/// Uses slice [`&str`] instead of owned [`String`] in order to avoid data duplication.
 pub type Tags<'a> = HashMap<&'a str, TagValue<'a>>;
 
+/// Possible values of message tags.
 #[derive(Debug, PartialEq)]
 pub enum TagValue<'a> {
+    /// Represents a parsed sequence of numbers of type u32.
     Number(u32),
+    /// Represents a parsed sequence of numbers of type u64.
     Timestamp(u64),
+    /// Boolean values represents literal "1" (true) or "0" (false).
+    ///
+    /// Note that a single digit number "1" or "0" may be represented
+    /// as a Boolean value instead of a Number value.
+    /// Type conversion should therefore be done by the user code.
     Boolean(bool),
+    /// Strings represent an unparsed string literal.
     String(&'a str),
-    Error(&'a str),
+    /// None represents literal empty string "".
     None,
 }
 
+impl<'a> TagValue<'a> {
+    /// Returns a TagValue variant based on the given [`&str`].
+    pub fn new(val: &'a str) -> TagValue<'a> {
+        match val {
+            "" => TagValue::None,
+            "0" => TagValue::Boolean(false),
+            "1" => TagValue::Boolean(true),
+            _ => {
+                if let Ok(num) = val.parse::<u32>() {
+                    TagValue::Number(num)
+                } else if let Ok(tm) = val.parse::<u64>() {
+                    TagValue::Timestamp(tm)
+                } else {
+                    TagValue::String(val)
+                }
+            }
+        }
+    }
+}
+
+/// Possible types of TMI messages.
+/// Unrecognized messages are handled by the associated [`parse`] function.
+///
+/// Tags are always treated as Optional even on messages that require them.
+/// Actually, tags validation should be done by the user code.
+///
+/// Consider changing simple enum structs to enum tuples.
 #[derive(Debug, PartialEq)]
 pub enum Message<'a> {
-    CapReq {
-        req: &'a str,
-    },
-    CapAck {
-        req: &'a str,
-    },
-    Pass {
-        pass: &'a str,
-    },
-    Nick {
-        nick: &'a str,
-    },
-    Join {
-        chan: &'a str,
-    },
-    Part {
-        chan: &'a str,
-    },
+    /// Represents a capability request message.
+    /// `CAP REQ :<capability>`
+    CapReq { req: &'a str },
+    /// Represents a capability acknowledgement message.
+    /// `:<endpoint> CAP * ACK :<capability>`
+    CapAck { req: &'a str },
+    /// Represents a password authentication message.
+    /// `PASS <password>`
+    /// `PASS oauth:<token>` (using Twitch OAuth tokens)
+    Pass { pass: &'a str },
+    /// Represents a nickname authentication message.
+    /// `NICK <user>`
+    Nick { nick: &'a str },
+    /// Represents a join command message.
+    /// `JOIN #<channel>`
+    Join { chan: &'a str },
+    /// Represents a part command message.
+    /// `PART #<channel>`
+    Part { chan: &'a str },
+    /// Represents a privmsg command message.
+    /// `[@<tags>] PRIVMSG #<channel> :<message>`
     Privmsg {
         tags: Option<Tags<'a>>,
         chan: &'a str,
         msg: &'a str,
     },
+    /// Represents a clearchat command message.
+    /// `[@<tags>] :<endpoint> CLEARCHAT #<channel> [:<user>]`
     Clearchat {
         tags: Option<Tags<'a>>,
         chan: &'a str,
         usr: Option<&'a str>,
     },
+    /// Represents a clearmsg command message.
+    /// `[@<tags>] :<endpoint> CLEARMSG #<channel> [:<message>]`
     Clearmsg {
         tags: Option<Tags<'a>>,
         chan: &'a str,
         msg: &'a str,
     },
+    /// Represents a hosttarget start message.
+    /// `:<endpoint> HOSTTARGET #<host> :<channel> [<viewers>]`
     HosttargetStart {
         host: &'a str,
         chan: &'a str,
         view: Option<u32>,
     },
-    HosttargetEnd {
-        host: &'a str,
-        view: Option<u32>,
-    },
+    /// Represents a hosttarget end message.
+    /// `:<endpoint> HOSTTARGET #<host> :- [<viewers>]`
+    HosttargetEnd { host: &'a str, view: Option<u32> },
+    /// Represents a notice message.
+    /// `[@<tags>] :<endpoint> NOTICE #<channel> :<message>`
     Notice {
         tags: Option<Tags<'a>>,
         chan: &'a str,
         msg: &'a str,
     },
+    /// Represents a reconnect request message.
+    /// `RECONNECT`
     Reconnect,
+    /// Represents a roomstate message.
+    /// `[@<tags>] :<endpoint> ROOMSTATE #<channel>`
     Roomstate {
         tags: Option<Tags<'a>>,
         chan: &'a str,
     },
+    /// Represents a usernotice message.
+    /// `[@<tags>] :<endpoint> USERNOTICE #<channel> :<message>`
     Usernotice {
         tags: Option<Tags<'a>>,
         chan: &'a str,
         msg: &'a str,
     },
+    /// Represents a userstate message.
+    /// `[@<tags>] :<endpoint> USERSTATE #<channel>`
     Userstate {
         tags: Option<Tags<'a>>,
         chan: &'a str,
     },
-    GlobalUserstate {
-        tags: Option<Tags<'a>>,
-    },
+    /// Represents a global userstate message.
+    /// `[@<tags>] :<endpoint> GLOBALUSERSTATE`
+    GlobalUserstate { tags: Option<Tags<'a>> },
 }
 
 impl<'a> Message<'a> {
+    /// Parses a [`& str`] slice and returns a Message if successful, otherwise an [`io::Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = ":tmi.twitch.tv CLEARCHAT #dallas :ronni";
+    /// let msg = tmi_parser::Message::parse(s);
+    /// ```
     pub fn parse(msg: &'a str) -> Result<Message> {
         if msg.len() < 8 {
             return Err(Error::new(ErrorKind::Other, "Malformed message."));
@@ -113,6 +179,7 @@ impl<'a> Message<'a> {
         Self::parse_command(cmd, body, tags)
     }
 
+    /// Helper function for parsing message tags.
     fn parse_tags(msg: &'a str) -> Result<(Option<Tags<'a>>, usize)> {
         let mut map = Tags::new();
 
@@ -125,25 +192,7 @@ impl<'a> Message<'a> {
                 let key = items[0];
                 let val = items[1];
 
-                map.insert(
-                    key,
-                    match val {
-                        "" | " " => TagValue::None,
-                        "0" => TagValue::Boolean(false),
-                        "1" => TagValue::Boolean(true),
-                        _ => {
-                            if let Ok(num) = val.parse::<u32>() {
-                                TagValue::Number(num)
-                            } else if let Ok(tm) = val.parse::<u64>() {
-                                TagValue::Timestamp(tm)
-                            } else if items[1].is_ascii() {
-                                TagValue::String(val)
-                            } else {
-                                TagValue::Error(val)
-                            }
-                        }
-                    },
-                );
+                map.insert(key, TagValue::new(val));
             }
 
             Ok((Some(map), idx + 3))
@@ -152,6 +201,7 @@ impl<'a> Message<'a> {
         }
     }
 
+    /// Helper function for parsing message body base on the command.
     fn parse_command(cmd: &'a str, body: &'a str, tags: Option<Tags<'a>>) -> Result<Message<'a>> {
         Ok(match cmd {
             "CAP" => {
