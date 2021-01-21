@@ -4,7 +4,7 @@ use tmi_parser::*;
 #[test]
 fn parse_clearchat() -> Result<()> {
     let chat1 = ":tmi.twitch.tv CLEARCHAT #dallas";
-    let chat2 = ":tmi.twitch.tv CLEARCHAT #dallas :ronni";
+    let chat2 = "\t:tmi.twitch.tv CLEARCHAT #dallas :ronni";
     let chat3 = "@ban-duration=<ban-duration> :tmi.twitch.tv CLEARCHAT #<channel> :<user>";
 
     assert_eq!(
@@ -42,9 +42,9 @@ fn parse_clearchat() -> Result<()> {
 
 #[test]
 fn parse_clearmsg() -> Result<()> {
-    let msg1 = "@login=<login>;target-msg-id=<target-msg-id> :tmi.twitch.tv CLEARMSG #<channel> :<message>";
+    let msg1 = "  @login=<login>;target-msg-id=<target-msg-id> :tmi.twitch.tv CLEARMSG #<channel> :<message>";
     let msg2 =
-        "@login=ronni;target-msg-id=abc-123-def :tmi.twitch.tv CLEARMSG #dallas :HeyGuys  \r\n";
+        "   @login=ronni;target-msg-id=abc-123-def :tmi.twitch.tv CLEARMSG #dallas :HeyGuys  \r\n";
 
     let mut tags1 = Tags::new();
     tags1.insert("login", TagValue::String("<login>"));
@@ -68,7 +68,7 @@ fn parse_clearmsg() -> Result<()> {
         Message::Clearmsg {
             tags: Some(tags2),
             chan: "dallas",
-            msg: "HeyGuys  ",
+            msg: "HeyGuys",
         }
     );
 

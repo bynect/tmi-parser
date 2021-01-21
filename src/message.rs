@@ -83,12 +83,11 @@ pub enum Message<'a> {
 
 impl<'a> Message<'a> {
     pub fn parse(msg: &'a str) -> Result<Message> {
-        let buf = if msg.ends_with("\r\n") {
-            &msg[..(msg.len() - 2)]
-        } else {
-            msg
-        };
+        if msg.len() < 8 {
+            return Err(Error::new(ErrorKind::Other, "Malformed message."));
+        }
 
+        let buf = msg.trim();
         let (tags, off) = if buf.starts_with('@') {
             let buf = &buf[1..];
 
