@@ -55,6 +55,12 @@ impl<'a> TagValue<'a> {
 /// Consider changing simple enum structs to enum tuples.
 #[derive(Debug, PartialEq)]
 pub enum Message<'a> {
+    /// Represents a ping request message.
+    /// `PING :<endpoint>`
+    Ping,
+    /// Represents a pong response message.
+    /// `PONG :<endpoint>`
+    Pong,
     /// Represents a capability request message.
     /// `CAP REQ :<capability>`
     CapReq { req: &'a str },
@@ -149,7 +155,7 @@ impl<'a> Message<'a> {
     /// let msg = tmi_parser::Message::parse(s);
     /// ```
     pub fn parse(msg: &'a str) -> Result<Message> {
-        if msg.len() < 8 {
+        if msg.len() < 5 {
             return Err(Error::new(ErrorKind::Other, "Malformed message."));
         }
 
@@ -169,14 +175,14 @@ impl<'a> Message<'a> {
             rest = &rest[(off + ENDPOINT.len())..];
         }
 
-        let off = rest
-            .find(' ')
-            .ok_or(Error::new(ErrorKind::Other, "Parsing message body failed."))?;
+        if let Some(off) = rest.find(' ') {
+            let cmd = &rest[..off];
+            let body = &rest[(off + 1)..];
 
-        let cmd = &rest[..off];
-        let body = &rest[(off + 1)..];
-
-        Self::parse_command(cmd, body, tags)
+            Self::parse_command(cmd, body, tags)
+        } else {
+            Self::parse_command(rest, "", tags)
+        }
     }
 
     /// Helper function for parsing message tags.
@@ -204,6 +210,8 @@ impl<'a> Message<'a> {
     /// Helper function for parsing message body base on the command.
     fn parse_command(cmd: &'a str, body: &'a str, tags: Option<Tags<'a>>) -> Result<Message<'a>> {
         Ok(match cmd {
+            "PING" => Message::Ping,
+            "PONG" => Message::Pong,
             "CAP" => {
                 let off = body
                     .find(" :")
