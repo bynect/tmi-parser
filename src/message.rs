@@ -1,6 +1,7 @@
 //! IRC-based TMI messages.
 
 use crate::{TagValue, Tags};
+use std::fmt::Write;
 use std::io::{Error, ErrorKind, Result};
 
 /// Possible types of TMI messages.
@@ -52,7 +53,7 @@ pub enum Message<'a> {
         usr: Option<&'a str>,
     },
     /// Represents a clearmsg command message.
-    /// `[@<tags>] :<endpoint> CLEARMSG #<channel> [:<message>]`
+    /// `[@<tags>] :<endpoint> CLEARMSG #<channel> :<message>`
     Clearmsg {
         tags: Option<Tags<'a>>,
         chan: &'a str,
@@ -103,13 +104,14 @@ pub enum Message<'a> {
 }
 
 impl<'a> Message<'a> {
-    /// Parses a [`& str`] slice and returns a Message if successful, otherwise an [`io::Error`].
+    /// Parses a [`& str`] slice and returns a Message if successful, otherwise an [`std::io::Error`].
     ///
     /// # Examples
     ///
     /// ```
+    /// # use tmi_parser::*;
     /// let s = ":tmi.twitch.tv CLEARCHAT #dallas :ronni";
-    /// let msg = tmi_parser::Message::parse(s);
+    /// let msg = Message::parse(s);
     /// ```
     pub fn parse(msg: &'a str) -> Result<Message> {
         if msg.len() < 5 {
@@ -327,5 +329,140 @@ impl<'a> Message<'a> {
                 ))
             }
         })
+    }
+
+    /// Unparses a Message and returns a newly allocated [`String`] if successful, otherwise an [`std::io::Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tmi_parser::*;
+    /// let msg = Message::Part { chan: "dallas" };
+    /// let s = msg.unparse();
+    /// ```
+    pub fn unparse(&self) -> Result<String> {
+        const ENDPOINT: &str = "tmi.twitch.tv";
+
+        Ok(match self {
+            Message::Ping => format!("PING {}", ENDPOINT),
+            Message::Pong => format!("PONG {}", ENDPOINT),
+            Message::CapReq { req } => format!("CAP REQ {}", req),
+            Message::CapAck { req } => format!("{} CAP * ACK {}", ENDPOINT, req),
+            Message::Pass { pass } => format!("PASS {}", pass),
+            Message::Nick { nick } => format!("NICK {}", nick),
+            Message::Join { chan } => format!("JOIN #{}", chan),
+            Message::Part { chan } => format!("PART #{}", chan),
+            Message::Privmsg { tags, chan, msg } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, "PRIVMSG #{} :{}", chan, msg).unwrap();
+                    body
+                } else {
+                    format!("PRIVMSG #{} :{}", chan, msg)
+                }
+            }
+            Message::Clearchat { tags, chan, usr } => {
+                let mut body = match Self::unparse_tags(tags) {
+                    Some(body) => body,
+                    _ => String::new(),
+                };
+
+                if let Some(usr) = usr {
+                    write!(body, ":{} CLEARCHAT #{} :{}", ENDPOINT, chan, usr).unwrap();
+                } else {
+                    write!(body, ":{} CLEARCHAT #{}", ENDPOINT, chan).unwrap();
+                }
+
+                body
+            }
+            Message::Clearmsg { tags, chan, msg } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, ":{} CLEARMSG #{} :{}", ENDPOINT, chan, msg).unwrap();
+                    body
+                } else {
+                    format!(":{} CLEARMSG #{} :{}", ENDPOINT, chan, msg)
+                }
+            }
+            Message::HosttargetStart { host, chan, view } => {
+                if let Some(view) = view {
+                    format!(":{} HOSTTARGET #{} :{} {}", ENDPOINT, host, chan, view)
+                } else {
+                    format!(":{} HOSTTARGET #{} :{}", ENDPOINT, host, chan)
+                }
+            }
+            Message::HosttargetEnd { host, view } => {
+                if let Some(view) = view {
+                    format!(":{} HOSTTARGET #{} :- {}", ENDPOINT, host, view)
+                } else {
+                    format!(":{} HOSTTARGET #{} :-", ENDPOINT, host)
+                }
+            }
+            Message::Notice { tags, chan, msg } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, ":{} NOTICE #{} :{}", ENDPOINT, chan, msg).unwrap();
+                    body
+                } else {
+                    format!(":{} NOTICE #{} :{}", ENDPOINT, chan, msg)
+                }
+            }
+            Message::Reconnect => String::from("RECONNECT"),
+            Message::Roomstate { tags, chan } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, ":{} ROOMSTATE #{}", ENDPOINT, chan).unwrap();
+                    body
+                } else {
+                    format!(":{} ROOMSTATE #{}", ENDPOINT, chan)
+                }
+            }
+            Message::Usernotice { tags, chan, msg } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, ":{} USERNOTICE #{} :{}", ENDPOINT, chan, msg).unwrap();
+                    body
+                } else {
+                    format!(":{} USERNOTICE #{} :{}", ENDPOINT, chan, msg)
+                }
+            }
+            Message::Userstate { tags, chan } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, ":{} USERSTATE #{}", ENDPOINT, chan).unwrap();
+                    body
+                } else {
+                    format!(":{} USERSTATE #{}", ENDPOINT, chan)
+                }
+            }
+            Message::GlobalUserstate { tags } => {
+                if let Some(mut body) = Self::unparse_tags(tags) {
+                    write!(body, ":{} GLOBALUSERSTATE", ENDPOINT).unwrap();
+                    body
+                } else {
+                    format!(":{} GLOBALUSERSTATE", ENDPOINT)
+                }
+            }
+        })
+    }
+
+    /// Helper function for unparsing message tags.
+    /// [`Tags`] doesn't store the original order of items!
+    fn unparse_tags(tags: &Option<Tags<'a>>) -> Option<String> {
+        if let Some(tags) = tags {
+            if !tags.is_empty() {
+                let mut raw = String::from("@");
+
+                for (key, val) in tags {
+                    raw.push_str(key);
+                    raw.push('=');
+                    raw.push_str(&format!("{}", val));
+                    raw.push(';');
+                }
+
+                raw.pop();
+                raw.push(' ');
+
+                Some(raw)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
