@@ -31,7 +31,10 @@ fn parse_privmsg() -> Result<()> {
     let mut tags = Tags::new();
     tags.insert("badge-info", TagValue::None);
     tags.insert("badges", TagValue::String("global_mod/1,turbo/1"));
-    tags.insert("color", TagValue::String("#0D4200"));
+    tags.insert(
+        "color",
+        TagValue::Number(u32::from_str_radix("0D4200", 16).unwrap()),
+    );
     tags.insert("display-name", TagValue::String("ronni"));
     tags.insert("emotes", TagValue::String("25:0-4,12-16/1902:6-10"));
     tags.insert(

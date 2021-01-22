@@ -37,6 +37,13 @@ impl<'a> TagValue<'a> {
                     TagValue::Number(num)
                 } else if let Ok(tm) = val.parse::<u64>() {
                     TagValue::Timestamp(tm)
+                } else if val.starts_with('#') {
+                    // Try to convert hexadecimal values, used by the 'color' tag, to Number.
+                    if let Ok(num) = u32::from_str_radix(&val[1..], 16) {
+                        TagValue::Number(num)
+                    } else {
+                        TagValue::String(val)
+                    }
                 } else {
                     TagValue::String(val)
                 }
