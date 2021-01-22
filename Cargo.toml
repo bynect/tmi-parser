@@ -1,6 +1,6 @@
 [package]
 name = "tmi-parser"
-version = "0.1.1-beta"
+version = "0.1.1"
 authors = ["bynect <68197565+bynect@users.noreply.github.com>"]
 edition = "2018"
 description = "A simple, dependency-less library for parsing IRC-based TMI message."

@@ -8,7 +8,13 @@ A simple, dependency-less library for parsing IRC-based TMI message.
 
 This library is made with simplicity and performance in mind using only Rust's pattern matching.
 
-Still a __WIP__.
+Still __WIP__.
+
+## Changelog
+
+* Separate `Message` and `Tags` in separate modules.
+
+* Implement a custom and more performant hasher for `Tags` map.
 
 ## Known issues
 

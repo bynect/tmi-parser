@@ -28,7 +28,7 @@ fn parse_privmsg() -> Result<()> {
         }
     );
 
-    let mut tags = Tags::new();
+    let mut tags = Tags::default();
     tags.insert("badge-info", TagValue::None);
     tags.insert("badges", TagValue::String("global_mod/1,turbo/1"));
     tags.insert(

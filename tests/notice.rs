@@ -7,7 +7,7 @@ fn parse_notice() -> Result<()> {
     let note2 =
         "@msg-id=slow_off :tmi.twitch.tv NOTICE #dallas :This room is no longer in slow mode.\r\n";
 
-    let mut tags1 = Tags::new();
+    let mut tags1 = Tags::default();
     tags1.insert("msg-id", TagValue::String("<msg id>"));
 
     assert_eq!(
@@ -19,7 +19,7 @@ fn parse_notice() -> Result<()> {
         }
     );
 
-    let mut tags2 = Tags::new();
+    let mut tags2 = Tags::default();
     tags2.insert("msg-id", TagValue::String("slow_off"));
 
     assert_eq!(
@@ -47,7 +47,7 @@ fn parse_usernotice() -> Result<()> {
                 room-id=1337;subscriber=1;system-msg=ronni\\shas\\ssubscribed\\sfor\\s6\\smonths!;tmi-sent-ts=1507246572675;\
                 turbo=1;user-id=1337;user-type=staff :tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!\r\n";
 
-    let mut tags1 = Tags::new();
+    let mut tags1 = Tags::default();
     tags1.insert("badge-info", TagValue::String("<badge-info>"));
     tags1.insert("badges", TagValue::String("<badges>"));
     tags1.insert("color", TagValue::String("<color>"));
@@ -74,7 +74,7 @@ fn parse_usernotice() -> Result<()> {
         }
     );
 
-    let mut tags2 = Tags::new();
+    let mut tags2 = Tags::default();
     tags2.insert("badge-info", TagValue::None);
     tags2.insert("badges", TagValue::String("staff/1,broadcaster/1,turbo/1"));
     tags2.insert(

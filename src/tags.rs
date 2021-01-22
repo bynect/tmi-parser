@@ -1,10 +1,56 @@
 //! Tags for TMI messages
 
-use std::collections::HashMap;
+use std::{collections::HashMap};
+use std::hash::BuildHasherDefault;
 
-/// A type alias for a HashMap whose keys are [`&str`] and values [`TagValue`].
+/// [`Tags`] is type alias for a [`HashMap`] whose keys are [`&str`] and values [`TagValue`].
 /// Uses slice [`&str`] instead of owned [`String`] in order to avoid data duplication.
-pub type Tags<'a> = HashMap<&'a str, TagValue<'a>>;
+/// Also uses a custom hasher which implements the 'Fnv 1a' hash function.
+///
+/// # Examples
+///
+/// ```
+/// # use tmi_parser::*;
+/// let mut map = Tags::default();
+/// map.insert("hello", TagValue::String("world"));
+/// # assert_eq!(*map.get("hello").unwrap(), TagValue::String("world"));
+/// ````
+pub type Tags<'a> = HashMap<&'a str, TagValue<'a>, BuildHasherDefault<hash::TagsHasher>>;
+
+/// [`TagsHasher`] is an internal implementation of the 'Fnv 1a' hash function.
+/// It lives under the private module hash and was made only for improving [`Tags`] performance.
+/// Since [`Tags`] will contain few items in average, the faster the hash, the better the performance,
+mod hash {
+    use std::hash::Hasher;
+
+    pub struct TagsHasher(u64);
+
+    impl Default for TagsHasher {
+        #[inline]
+        fn default() -> TagsHasher {
+            TagsHasher(14695981039346656037)
+        }
+    }
+
+    impl Hasher for TagsHasher {
+        #[inline]
+        fn finish(&self) -> u64 {
+            self.0
+        }
+
+        #[inline]
+        fn write(&mut self, bytes: &[u8]) {
+            let TagsHasher(mut hash) = *self;
+
+            for byte in bytes.iter() {
+                hash ^= *byte as u64;
+                hash = hash.wrapping_mul(1099511628211);
+            }
+
+            *self = TagsHasher(hash);
+        }
+    }
+}
 
 /// Possible values of message tags.
 #[derive(Debug, PartialEq)]

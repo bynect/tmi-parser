@@ -142,7 +142,7 @@ impl<'a> Message<'a> {
 
     /// Helper function for parsing message tags.
     fn parse_tags(msg: &'a str) -> Result<(Option<Tags<'a>>, usize)> {
-        let mut map = Tags::new();
+        let mut map = Tags::default();
 
         if let Some(idx) = msg.find(" :") {
             let tag = &msg[..idx];

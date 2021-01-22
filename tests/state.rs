@@ -9,7 +9,7 @@ fn parse_roomstate() -> Result<()> {
         "@emote-only=0;followers-only=0;r9k=0;slow=0;subs-only=0 :tmi.twitch.tv ROOMSTATE #dallas";
     let room3 = ":tmi.twitch.tv ROOMSTATE #<channel>";
 
-    let mut tags1 = Tags::new();
+    let mut tags1 = Tags::default();
     tags1.insert("emote-only", TagValue::String("<emote-only>"));
     tags1.insert("followers-only", TagValue::String("<followers-only>"));
     tags1.insert("r9k", TagValue::String("<r9k>"));
@@ -24,7 +24,7 @@ fn parse_roomstate() -> Result<()> {
         }
     );
 
-    let mut tags2 = Tags::new();
+    let mut tags2 = Tags::default();
     tags2.insert("emote-only", TagValue::Boolean(false));
     tags2.insert("followers-only", TagValue::Boolean(false));
     tags2.insert("r9k", TagValue::Boolean(false));
@@ -59,7 +59,7 @@ fn parse_userstate() -> Result<()> {
                 mod=1;subscriber=1;turbo=1;user-type=staff :tmi.twitch.tv USERSTATE #dallas";
     let user3 = ":tmi.twitch.tv USERSTATE #<channel>";
 
-    let mut tags1 = Tags::new();
+    let mut tags1 = Tags::default();
     tags1.insert("badge-info", TagValue::String("<badge-info>"));
     tags1.insert("badges", TagValue::String("<badges>"));
     tags1.insert("color", TagValue::String("<color>"));
@@ -78,7 +78,7 @@ fn parse_userstate() -> Result<()> {
         }
     );
 
-    let mut tags2 = Tags::new();
+    let mut tags2 = Tags::default();
     tags2.insert("badge-info", TagValue::None);
     tags2.insert("badges", TagValue::String("staff/1"));
     tags2.insert(

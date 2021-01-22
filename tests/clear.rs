@@ -25,7 +25,7 @@ fn parse_clearchat() -> Result<()> {
         }
     );
 
-    let mut tags = Tags::new();
+    let mut tags = Tags::default();
     tags.insert("ban-duration", TagValue::String("<ban-duration>"));
 
     assert_eq!(
@@ -46,7 +46,7 @@ fn parse_clearmsg() -> Result<()> {
     let msg2 =
         "   @login=ronni;target-msg-id=abc-123-def :tmi.twitch.tv CLEARMSG #dallas :HeyGuys  \r\n";
 
-    let mut tags1 = Tags::new();
+    let mut tags1 = Tags::default();
     tags1.insert("login", TagValue::String("<login>"));
     tags1.insert("target-msg-id", TagValue::String("<target-msg-id>"));
 
@@ -59,7 +59,7 @@ fn parse_clearmsg() -> Result<()> {
         }
     );
 
-    let mut tags2 = Tags::new();
+    let mut tags2 = Tags::default();
     tags2.insert("login", TagValue::String("ronni"));
     tags2.insert("target-msg-id", TagValue::String("abc-123-def"));
 
