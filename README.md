@@ -16,6 +16,8 @@ Still __WIP__.
 
 * Implement a custom and more performant hasher for `Tags` map.
 
+* Separate `TagValue::Number` and `TagValue::Color`.
+
 ## Known issues
 
 * If fed with incorrect input, `Message::parse` may panic.

@@ -79,7 +79,7 @@ fn parse_usernotice() -> Result<()> {
     tags2.insert("badges", TagValue::String("staff/1,broadcaster/1,turbo/1"));
     tags2.insert(
         "color",
-        TagValue::Number(u32::from_str_radix("008000", 16).unwrap()),
+        TagValue::Color(u32::from_str_radix("008000", 16).unwrap()),
     );
     tags2.insert("display-name", TagValue::String("ronni"));
     tags2.insert("emotes", TagValue::None);

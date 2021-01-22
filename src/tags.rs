@@ -1,7 +1,8 @@
 //! Tags for TMI messages
 
-use std::{collections::HashMap};
+use std::fmt;
 use std::hash::BuildHasherDefault;
+use std::{collections::HashMap, u32};
 
 /// [`Tags`] is type alias for a [`HashMap`] whose keys are [`&str`] and values [`TagValue`].
 /// Uses slice [`&str`] instead of owned [`String`] in order to avoid data duplication.
@@ -56,8 +57,13 @@ mod hash {
 #[derive(Debug, PartialEq)]
 pub enum TagValue<'a> {
     /// Represents a parsed sequence of numbers of type u32.
+    /// Used for the `color` tag.
+    Color(u32),
+    /// Represents a parsed sequence of numbers of type u32.
+    /// Used for generic numeric string.
     Number(u32),
     /// Represents a parsed sequence of numbers of type u64.
+    /// Used for the `tmi-sent-ts` tag.
     Timestamp(u64),
     /// Boolean values represents literal "1" (true) or "0" (false).
     ///
@@ -86,7 +92,7 @@ impl<'a> TagValue<'a> {
                 } else if val.starts_with('#') {
                     // Try to convert hexadecimal values, used by the 'color' tag, to Number.
                     if let Ok(num) = u32::from_str_radix(&val[1..], 16) {
-                        TagValue::Number(num)
+                        TagValue::Color(num)
                     } else {
                         TagValue::String(val)
                     }
@@ -94,6 +100,20 @@ impl<'a> TagValue<'a> {
                     TagValue::String(val)
                 }
             }
+        }
+    }
+}
+
+impl<'a> fmt::Display for TagValue<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TagValue::Color(num) => write!(f, "#{:06X}", num),
+            TagValue::Number(num) => write!(f, "{}", num),
+            TagValue::Timestamp(num) => write!(f, "{}", num),
+            TagValue::Boolean(false) => write!(f, "0"),
+            TagValue::Boolean(true) => write!(f, "1"),
+            TagValue::String(val) => write!(f, "{}", val),
+            TagValue::None => write!(f, ""),
         }
     }
 }
