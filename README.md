@@ -22,9 +22,11 @@ Still __WIP__.
 
 * If fed with incorrect input, `Message::parse` may panic.
 
-* `Message` tags are not checked.
+* `Message` tags are not validated.
 
 * Single digit number `0` or `1` will be interpreted as Boolean `false` or `true`.
+
+* Unparsing `Message` may return a string different from the original.
 
 ## License
 
